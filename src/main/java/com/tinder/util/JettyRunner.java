@@ -4,6 +4,7 @@ import java.util.EnumSet;
 
 import javax.servlet.DispatcherType;
 
+import com.tinder.controller.MessageServlet;
 import org.eclipse.jetty.rewrite.handler.RedirectPatternRule;
 import org.eclipse.jetty.rewrite.handler.RewriteHandler;
 import org.eclipse.jetty.server.Handler;
@@ -45,6 +46,8 @@ public class JettyRunner {
         dynamicHandler.addServlet(UserServlet.class, "/logout");
         dynamicHandler.addServlet(UserServlet.class, "/users");
         dynamicHandler.addServlet(UserServlet.class, "/liked");
+        dynamicHandler.addServlet(MessageServlet.class, "/messages/*");
+
 
         // RewriteHandler to redirect root to /users
         // If not redirected, the default behavior is to serve static content by showing the directory listing or 403 if listing is disabled

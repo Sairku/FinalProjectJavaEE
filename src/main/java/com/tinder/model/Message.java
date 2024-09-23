@@ -15,6 +15,13 @@ public class Message {
         this.message = message;
         this.timestamp = timestamp;
     }
+    public Message(int senderId, int receiverId, String message) {
+        this.senderId = senderId;
+        this.receiverId = receiverId;
+        this.message = message;
+    }
+
+
 
     // Getters and Setters
     public int getId() {
