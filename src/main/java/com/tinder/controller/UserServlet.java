@@ -16,6 +16,7 @@ import com.tinder.model.User;
 import com.tinder.service.UserService;
 import com.tinder.util.CookieHelper;
 import com.tinder.util.RequestHelper;
+import com.tinder.util.ResponseHelper;
 import com.tinder.util.TemplateEngine;
 
 @WebServlet(urlPatterns = { "/login", "/register", "/logout", "/profile", "/users" })
@@ -35,10 +36,10 @@ public class UserServlet extends HttpServlet {
 
         switch (path) {
             case "/login" -> {
-                renderTemplate(response, "user/login.ftl", null);
+                TemplateEngine.render(response, "login.ftl");
             }
             case "/register" -> {
-                renderTemplate(response, "user/register.ftl", null);
+                TemplateEngine.render(response, "register.ftl");
             }
             case "/users" -> {
                 showUsers(request, response);
@@ -96,11 +97,11 @@ public class UserServlet extends HttpServlet {
             CookieHelper.setEmail(response, user.getEmail());
 
             // response.sendRedirect(request.getContextPath() + "/users");
-            sendJsonResponse(response, "{\"success\": true, \"redirect\": \"/users\"}");
+            ResponseHelper.sendJsonResponse(response, "{\"success\": true, \"redirect\": \"/users\"}");
         } catch (UserValidationException e) {
             e.printStackTrace();
 
-            sendJsonResponse(response, "{\"success\": false, \"msg\": \"" + e.getMessage() + "\"}");
+            ResponseHelper.sendJsonResponse(response, "{\"success\": false, \"msg\": \"" + e.getMessage() + "\"}");
         } catch (SQLException e) {
             e.printStackTrace();
 
@@ -118,15 +119,15 @@ public class UserServlet extends HttpServlet {
             CookieHelper.setEmail(response, user.getEmail());
 
             // response.sendRedirect(request.getContextPath() + "/users");
-            sendJsonResponse(response, "{\"success\": true, \"redirect\": \"/users\"}");
+            ResponseHelper.sendJsonResponse(response, "{\"success\": true, \"redirect\": \"/users\"}");
         } catch (UserValidationException e) {
             e.printStackTrace();
 
-            sendJsonResponse(response, "{\"success\": false, \"msg\": \"" + e.getMessage() + "\"}");
+            ResponseHelper.sendJsonResponse(response, "{\"success\": false, \"msg\": \"" + e.getMessage() + "\"}");
         } catch (SQLException e) {
             e.printStackTrace();
 
-            sendJsonResponse(response, "{\"success\": false, \"msg\": \"" + e.getMessage() + "\"}");
+            ResponseHelper.sendJsonResponse(response, "{\"success\": false, \"msg\": \"" + e.getMessage() + "\"}");
         }
     }
 
@@ -142,16 +143,16 @@ public class UserServlet extends HttpServlet {
 
     private void showUsers(HttpServletRequest request, HttpServletResponse response) {
         try {
-            String userEmail = CookieHelper.getEmail(request);
-            List<User> users = userService.getAllUsers(userEmail);
+            User user = (User) request.getAttribute("user");
+            List<User> users = userService.getAllUsers(user);
 
             Map<String, Object> data = Map.of("users", users);
 
-            renderTemplate(response, "user/users.ftl", data);
+            TemplateEngine.render(response, "users.ftl", data);
         } catch (Exception e) {
             e.printStackTrace();
 
-            response.setStatus(500);
+            ResponseHelper.showErrorPage(response, e.getMessage());
         }
     }
 
@@ -166,20 +167,18 @@ public class UserServlet extends HttpServlet {
             } catch (IOException e) {
                 e.printStackTrace();
 
-                sendJsonResponse(response, "{\"success\": false, \"msg\": \"" + e.getMessage() + "\"}");
+                ResponseHelper.sendJsonResponse(response, "{\"success\": false, \"msg\": \"" + e.getMessage() + "\"}");
             }
         }
 
         if (userId == null) {
-            sendJsonResponse(response, "{\"success\": false, \"msg\": \"Liked userId is required\"}");
+            ResponseHelper.sendJsonResponse(response, "{\"success\": false, \"msg\": \"Liked userId is required\"}");
 
             return;
         }
-        
-        String userEmail = CookieHelper.getEmail(request);
 
         try {
-            User user = userService.getUser(userEmail);
+            User user = (User) request.getAttribute("user");
 
             if (like) {
                 userService.likeUser(user, Integer.parseInt(userId));
@@ -187,47 +186,27 @@ public class UserServlet extends HttpServlet {
                 userService.dislikeUser(user, Integer.parseInt(userId));
             }
 
-            sendJsonResponse(response, "{\"success\": true}");
+            ResponseHelper.sendJsonResponse(response, "{\"success\": true}");
         } catch (SQLException e) {
             e.printStackTrace();
 
-            sendJsonResponse(response, "{\"success\": false, \"msg\": \"" + e.getMessage() + "\"}");
+            ResponseHelper.sendJsonResponse(response, "{\"success\": false, \"msg\": \"" + e.getMessage() + "\"}");
         }
     }
 
     private void showLikedUsers(HttpServletRequest request, HttpServletResponse response) {
         try {
-            String userEmail = CookieHelper.getEmail(request);
-            User user = userService.getUser(userEmail);
+            User user = (User) request.getAttribute("user");
 
             List<User> likedUsers = userService.getLikedUsers(user);
 
             Map<String, Object> data = Map.of("users", likedUsers);
 
-            renderTemplate(response, "user/likedUsers.ftl", data);
+            TemplateEngine.render(response, "likedUsers.ftl", data);
         } catch (Exception e) {
             e.printStackTrace();
 
-            response.setStatus(500);
-        }
-    }
-
-    private void renderTemplate(HttpServletResponse response, String template, Map<String, Object> data) {
-        if (data == null || data.isEmpty()) {
-            TemplateEngine.render(response, template);
-        } else {
-            TemplateEngine.render(response, template, data);
-        }
-    }
-
-    private void sendJsonResponse(HttpServletResponse response, String json) {
-        response.setContentType("application/json");
-        try {
-            response.getWriter().write(json);
-        } catch (IOException e) {
-            e.printStackTrace();
-
-            response.setStatus(500);
+            ResponseHelper.showErrorPage(response, e.getMessage());
         }
     }
 }

@@ -1,101 +1,126 @@
 package com.tinder.controller;
 
+import com.tinder.model.Message;
 import com.tinder.model.User;
 import com.tinder.service.MessageService;
-import com.tinder.service.UserService;
-import com.tinder.util.CookieHelper;
+import com.tinder.util.ResponseHelper;
 import com.tinder.util.TemplateEngine;
 
-import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
 import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @WebServlet("/messages/*")
 public class MessageServlet extends HttpServlet {
-
-
-    // Захардкожені повідомлення для тестування
-    private Map<Integer, List<String>> messages = new HashMap<>();
+    // Default messages for users
+    private final Map<Integer, String> messagesDefault = new HashMap<>(){{
+        put(1, "Привіт!");
+        put(2, "Привіт! Як справи?");
+    }};
     private MessageService messageService;
-    private UserService userService;
 
     @Override
-    public void init() throws ServletException {
+    public void init() {
         messageService = new MessageService();
-        userService = new UserService();
-        // Ініціалізуємо декілька захардкожених повідомлень
-        messages.put(1, Arrays.asList("Привіт! Як справи?", "Я добре, дякую!"));
-        messages.put(2, Arrays.asList("Привіт, давно не бачилися!", "Так, погоджуюсь!"));
     }
 
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        String pathInfo = req.getPathInfo(); // Отримуємо частину URL після /messages/
-        if (pathInfo == null || pathInfo.equals("/")) {
-            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "User ID is missing.");
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
+        int receiverId = getUserIdFromPath(req.getPathInfo(), resp);
+
+        if (receiverId == -1) {
             return;
         }
 
-        String[] splits = pathInfo.split("/");
-        if (splits.length < 2) {
-            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid User ID.");
+        User user = (User) req.getAttribute("user");
+
+        if (user.getId() == receiverId) {
+            ResponseHelper.showErrorPage(resp, "You can't send messages to yourself.");
+
             return;
         }
 
-        int userId;
+        // Get messages for the user
+        List<Message> messages;
+
         try {
-            userId = Integer.parseInt(splits[1]);
-        } catch (NumberFormatException e) {
-            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "User ID should be a number.");
+            messages = messageService.getAllMessages(user.getId(), receiverId);
+        } catch (SQLException e) {
+            ResponseHelper.showErrorPage(resp, e.getMessage());
+
             return;
         }
 
-        // Отримуємо повідомлення для користувача
-        List<String> userMessages = messages.getOrDefault(userId, Arrays.asList("Повідомлень немає"));
+        if (messages.isEmpty()) {
+            String defaultMsg = messagesDefault.get(1 + new Random().nextInt(2));
+            Message message = new Message(receiverId, user.getId(), defaultMsg);
 
-        // Відправляємо повідомлення на сторінку
-        Map<String, Object> data = new HashMap<>();
+            try {
+                messageService.createMessage(receiverId, user.getId(), defaultMsg);
+            } catch (SQLException e) {
+                ResponseHelper.showErrorPage(resp, e.getMessage());
 
-        data.put("userId", userId);
-        data.put("messages", userMessages);
+                return;
+            }
 
-        TemplateEngine.render(resp, "user/messages.ftl", data);
+            messages.add(message);
+        }
+
+        Map<String, Object> data = Map.of(
+                "receiverId", receiverId,
+                "userId", user.getId(),
+                "messages", messages
+        );
+
+        TemplateEngine.render(resp, "messages.ftl", data);
     }
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) {
-        String userEmail = CookieHelper.getEmail(req);
-        int receiverId = Integer.parseInt(req.getParameter("receiverId"));
+        User user = (User) req.getAttribute("user");
         String msg = req.getParameter("message");
 
-        try {
-            User user = userService.getUser(userEmail);
-            messageService.createMessage(user.getId(), receiverId, msg);
-            resp.setContentType("application/json");
-            resp.getWriter().write("{\"success\": true}");
+        int receiverId = getUserIdFromPath(req.getPathInfo(), resp);
 
-        } catch (SQLException e) {
-            e.printStackTrace();
-            resp.setContentType("application/json");
-            try {
-                resp.getWriter().write("{\"success\": false, \"msg\": \"" + e.getMessage() + "\"}");
-            } catch (IOException ex) {
-                e.printStackTrace();
-            }
-
-        } catch (IOException e) {
-            e.printStackTrace();
-            resp.setStatus(500);
+        if (receiverId == -1) {
+            return;
         }
 
+        try {
+            messageService.createMessage(user.getId(), receiverId, msg);
 
+            ResponseHelper.sendJsonResponse(resp, "{\"success\": true}");
+        } catch (SQLException e) {
+            e.printStackTrace();
+
+            ResponseHelper.sendJsonResponse(resp, "{\"success\": false, \"msg\": \"" + e.getMessage() + "\"}");
+        }
+    }
+
+    private int getUserIdFromPath(String pathInfo, HttpServletResponse resp) {
+        if (pathInfo == null || pathInfo.equals("/")) {
+            ResponseHelper.showErrorPage(resp, "User ID is missing.");
+
+            return -1;
+        }
+
+        String[] splits = pathInfo.split("/");
+
+        if (splits.length < 2) {
+            ResponseHelper.showErrorPage(resp, "Invalid User ID.");
+
+            return -1;
+        }
+
+        try {
+            return Integer.parseInt(splits[1]);
+        } catch (NumberFormatException e) {
+            ResponseHelper.showErrorPage(resp, "User ID should be a number.");
+
+            return -1;
+        }
     }
 }

@@ -8,8 +8,8 @@ import java.sql.SQLException;
 import java.util.List;
 
 public interface MessageDAO {
-    public void create(Message message) throws SQLException;
-    public List<Message> getAll(int senderId, int receiverId) throws SQLException;
+    void create(Message message) throws SQLException;
+    List<Message> getAll(int senderId, int receiverId) throws SQLException;
 
     default Connection getConnection() {
         return DBConnector.connect();

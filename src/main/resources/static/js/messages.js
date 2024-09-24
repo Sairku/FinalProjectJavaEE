@@ -1,35 +1,35 @@
 document.addEventListener('DOMContentLoaded', function () {
-    const messageList = document.querySelector('#message-list'); // Список повідомлень
-    const sendButton = document.querySelector('#send-btn'); // Кнопка відправки
-    const messageInput = document.querySelector('#message-input'); // Поле для введення повідомлення
-    const userId = document.querySelector('#user-id').value; // Отримання ID користувача
+    // Send message
+    document.getElementById("messageForm").addEventListener("submit", function(event) {
+        event.preventDefault();
+        const message = document.getElementById("messageInput").value;
+        const receiverId = document.querySelector('#receiver-id').value;
 
-    // Відправка нового повідомлення
-    sendButton.addEventListener('click', function () {
-        const message = messageInput.value;
         if (message.trim() === '') {
-            return; // Не відправляти порожнє повідомлення
+            return;
         }
 
-        fetch(`/messages/${userId}`, {
+        fetch(`/messages/${receiverId}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
             },
-            body: new URLSearchParams({
-                                receiverId: userId,
-                                message
-                            }),
+            body: new URLSearchParams({ message }),
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Додаємо нове повідомлення в список
-                const newMessage = document.createElement('li');
-                newMessage.classList.add('message-item');
-                newMessage.textContent = message;
-                messageList.appendChild(newMessage);
-                messageInput.value = ''; // Очищаємо поле вводу
+                document.getElementById("messageInput").value = "";
+
+                const chatContainer = document.getElementById("chat");
+                const newMessage = document.createElement("div");
+
+                newMessage.classList.add("message", "sender");
+                newMessage.innerHTML = "<p>" + message + "</p>";
+
+                chatContainer.appendChild(newMessage);
+
+                chatContainer.scrollTop = chatContainer.scrollHeight;
             } else {
                 alert(data.msg ? data.msg : "Помилка при відправці повідомлення.");
             }

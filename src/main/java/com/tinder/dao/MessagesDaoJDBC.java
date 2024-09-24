@@ -30,10 +30,12 @@ public class MessagesDaoJDBC implements MessageDAO {
         ArrayList<Message> messages = new ArrayList<>();
         Connection connection = getConnection();
 
-        String query = "SELECT * FROM messages WHERE senderId = ? AND receiverId = ?";
+        String query = "SELECT * FROM messages WHERE (senderId = ? AND receiverId = ?) OR (senderId = ? AND receiverId = ?) ORDER BY timestamp";
         PreparedStatement preparedStatement = connection.prepareStatement(query);
         preparedStatement.setInt(1, senderId);
         preparedStatement.setInt(2, receiverId);
+        preparedStatement.setInt(3, receiverId);
+        preparedStatement.setInt(4, senderId);
 
         ResultSet resultSet = preparedStatement.executeQuery();
 
@@ -44,10 +46,11 @@ public class MessagesDaoJDBC implements MessageDAO {
                     resultSet.getInt("receiverId"),
                     resultSet.getString("message"),
                     resultSet.getString("timestamp")
-                    );
+            );
 
             messages.add(message);
         }
+
         resultSet.close();
         preparedStatement.close();
 
