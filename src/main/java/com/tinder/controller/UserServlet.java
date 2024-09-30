@@ -14,10 +14,7 @@ import javax.servlet.http.HttpServletResponse;
 import com.tinder.exception.UserValidationException;
 import com.tinder.model.User;
 import com.tinder.service.UserService;
-import com.tinder.util.CookieHelper;
-import com.tinder.util.RequestHelper;
-import com.tinder.util.ResponseHelper;
-import com.tinder.util.TemplateEngine;
+import com.tinder.util.*;
 
 @WebServlet(urlPatterns = { "/login", "/register", "/logout", "/profile", "/users" })
 public class UserServlet extends HttpServlet {
@@ -91,6 +88,16 @@ public class UserServlet extends HttpServlet {
         String email = request.getParameter("email");
         String password = request.getParameter("password");
 
+        if (!ValidationHelper.isValidEmail(email)) {
+            ResponseHelper.sendJsonResponse(response, "{\"success\": false, \"msg\": \"Invalid email format.\"}");
+            return;
+        }
+
+        if (!ValidationHelper.isValidPassword(password)) {
+            ResponseHelper.sendJsonResponse(response, "{\"success\": false, \"msg\": \"Password must be at least 8 characters long and contain letters and numbers.\"}");
+            return;
+        }
+
         try {
             User user = userService.loginUser(email, password);
 
@@ -99,8 +106,7 @@ public class UserServlet extends HttpServlet {
             // response.sendRedirect(request.getContextPath() + "/users");
             ResponseHelper.sendJsonResponse(response, "{\"success\": true, \"redirect\": \"/users\"}");
         } catch (UserValidationException e) {
-            e.printStackTrace();
-
+            // e.printStackTrace();
             ResponseHelper.sendJsonResponse(response, "{\"success\": false, \"msg\": \"" + e.getMessage() + "\"}");
         } catch (SQLException e) {
             e.printStackTrace();
@@ -113,6 +119,16 @@ public class UserServlet extends HttpServlet {
         String email = request.getParameter("email");
         String password = request.getParameter("password");
 
+        if (!ValidationHelper.isValidEmail(email)) {
+            ResponseHelper.sendJsonResponse(response, "{\"success\": false, \"msg\": \"Invalid email format.\"}");
+            return;
+        }
+
+        if (!ValidationHelper.isValidPassword(password)) {
+            ResponseHelper.sendJsonResponse(response, "{\"success\": false, \"msg\": \"Password must be at least 8 characters long and contain letters and numbers.\"}");
+            return;
+        }
+
         try {
             User user = userService.createUser(email, password);
 
@@ -121,8 +137,7 @@ public class UserServlet extends HttpServlet {
             // response.sendRedirect(request.getContextPath() + "/users");
             ResponseHelper.sendJsonResponse(response, "{\"success\": true, \"redirect\": \"/users\"}");
         } catch (UserValidationException e) {
-            e.printStackTrace();
-
+            // e.printStackTrace();
             ResponseHelper.sendJsonResponse(response, "{\"success\": false, \"msg\": \"" + e.getMessage() + "\"}");
         } catch (SQLException e) {
             e.printStackTrace();
